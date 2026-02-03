@@ -32,6 +32,7 @@ openssl rand -hex 8
 2. Create a new Xcode project. Use `Telegram` as the Product Name. Use `org.{identifier from step 1}` as the Organization Identifier.
 3. Open `Keychain Access` and navigate to `Certificates`. Locate `Apple Development: your@email.address (XXXXXXXXXX)` and double tap the certificate. Under `Details`, locate `Organizational Unit`. This is the Team ID.
 4. Edit `build-system/template_minimal_development_configuration.json`. Use data from the previous steps.
+   - **Important:** `bundle_id` and `team_id` must not contain curly braces `{ }` (use e.g. `org.yourname.telegram` and your 10-character Team ID).
 
 ## Generate an Xcode project
 
@@ -71,6 +72,49 @@ python3 build-system/Make/Make.py \
     --buildNumber=100001 \
     --configuration=release_arm64
 ```
+
+# Building without a Mac
+
+You need **macOS only for building** the app (Xcode). You do **not** need a Mac to get your Team ID or to install the app on your iPhone.
+
+**Team ID (without Mac):**
+1. Open [developer.apple.com](https://developer.apple.com) in a browser and sign in with your Apple ID.
+2. Go to **Account** (or **Membership**).
+3. Your **Team ID** is shown there (10 characters, e.g. `A1B2C3D4E5`). Copy it into `team_id` in `build-system/template_minimal_development_configuration.json`.
+
+**Building:** Use a Mac in the cloud, for example:
+- **GitHub Actions:** push your repo and use a `macos-latest` runner to run the project generation and build; upload the IPA as an artifact and download it.
+- **Rented Mac** (e.g. MacinCloud, MacStadium): run the same `Make.py` commands there and download the IPA.
+
+**Installing on iPhone (from Windows):** See below.
+
+## Установка на iPhone через Sideloadly (Windows)
+
+1. **Скачайте IPA** — готовый файл приложения (например, из артефактов CI или с облачного Mac).
+2. **Установите Sideloadly** — [sideloadly.io](https://sideloadly.io/), скачайте версию для Windows и установите.
+3. **Подключите iPhone** к ПК кабелем. На iPhone при запросе «Доверять этому компьютеру?» нажмите **Доверять**.
+4. **Запустите Sideloadly.** В поле **App / IPA** укажите путь к вашему `.ipa` файлу (или перетащите файл в окно).
+5. **Apple ID:** введите свой Apple ID и пароль (или выберите сохранённый аккаунт). Sideloadly подпишет приложение вашим аккаунтом — для бесплатного Apple ID подпись действует **7 дней**, после чего установку нужно повторить.
+6. Нажмите **Start** (или **Sideload**). Дождитесь окончания установки.
+7. На iPhone: **Настройки → Основные → VPN и управление устройством** — при необходимости нажмите на профиль разработчика и выберите **Доверять**.
+8. Приложение появится на домашнем экране; можно открывать и пользоваться.
+
+**Если приложение перестало открываться** (например, через 7 дней) — снова откройте тот же IPA в Sideloadly и повторите установку.
+
+# Building for distribution (e.g. Sideloadly)
+
+If you build **one IPA and share it with other users** (they install via Sideloadly with their own Apple ID):
+
+- Use **one** configuration: set `bundle_id` (e.g. `org.telegram.sideload`), `api_id`, `api_hash`, and `team_id` to your values. Build the IPA once; the same IPA can be installed by many users. Each user signs it with their Apple ID in Sideloadly (typically 7-day limit for free accounts).
+- You can keep a single `api_id`/`api_hash` from [my.telegram.org](https://my.telegram.org/apps) for your app; all users of your build will use that application identity.
+
+If **other people will build from your source** (each builds their own app):
+
+- Each builder must edit `build-system/template_minimal_development_configuration.json` (or their own copy) with:
+  - Their own `bundle_id` (e.g. `org.{identifier}` from `openssl rand -hex 8`) — **no `{ }` in the value.**
+  - Their own `api_id` and `api_hash` from [my.telegram.org](https://my.telegram.org/apps).
+  - Their own `team_id`: from Keychain on Mac, or from [developer.apple.com](https://developer.apple.com) → Account → Membership (no Mac needed).
+- Document for them that `bundle_id` and `team_id` must not contain curly braces.
 
 # FAQ
 
