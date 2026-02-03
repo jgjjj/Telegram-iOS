@@ -26,7 +26,7 @@ jobs:
           cp -R $GITHUB_WORKSPACE /Users/Shared/
           mv /Users/Shared/$(basename $GITHUB_WORKSPACE) /Users/Shared/telegram-ios
 
-      - name: Build Telegram ipa
+      - name: Generate Xcode project
         run: |
           set -x
 
@@ -47,27 +47,56 @@ jobs:
           echo "BUILD_NUMBER=$(echo $BUILD_NUMBER)" >> $GITHUB_ENV
           echo "APP_VERSION=$(echo $APP_VERSION)" >> $GITHUB_ENV
 
-          python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
           python3 -u build-system/Make/Make.py \
             --bazelUserRoot="$BAZEL_USER_ROOT" \
-            build \
-            --configurationPath="build-system/appstore-configuration.json" \
-            --codesigningInformationPath=build-system/fake-codesigning \
-            --configuration=release_arm64 \
+            generateProject \
+            --configurationPath="build-system/template_minimal_development_configuration.json" \
+            --xcodeManagedCodesigning \
+            --disableProvisioningProfiles \
             --buildNumber="$BUILD_NUMBER"
 
-          # collect ipa
-          OUTPUT_PATH="build/artifacts"
-          rm -rf "$OUTPUT_PATH"
-          mkdir -p "$OUTPUT_PATH"
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/Telegram.ipa; do
-            cp "$f" $OUTPUT_PATH/
-          done
+      - name: Build archive without code signing
+        run: |
+          set -e
+          SOURCE_DIR=/Users/Shared/telegram-ios
+          cd $SOURCE_DIR
+          xcodebuild \
+            -project Telegram/Telegram.xcodeproj \
+            -scheme Telegram \
+            -sdk iphoneos \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/Telegram.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean archive
+
+      - name: Create unsigned IPA
+        run: |
+          set -e
+          ARCHIVE_APPS_DIR="$RUNNER_TEMP/Telegram.xcarchive/Products/Applications"
+          echo "Contents of $ARCHIVE_APPS_DIR:"
+          ls -la "$ARCHIVE_APPS_DIR"
+
+          APP_NAME=$(ls "$ARCHIVE_APPS_DIR" | grep ".app$" | head -n 1)
+          if [ -z "$APP_NAME" ]; then
+            echo "No .app found in $ARCHIVE_APPS_DIR"
+            exit 1
+          fi
+
+          APP_PATH="$ARCHIVE_APPS_DIR/$APP_NAME"
+          echo "Using app: $APP_PATH"
+
+          PAYLOAD_DIR="$RUNNER_TEMP/Payload"
+          mkdir -p "$PAYLOAD_DIR"
+          cp -R "$APP_PATH" "$PAYLOAD_DIR/"
+          cd "$RUNNER_TEMP"
+          zip -r "Telegram-unsigned.ipa" Payload
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
           name: telegram-unsigned-ipa
-          path: /Users/Shared/telegram-ios/build/artifacts/Telegram.ipa
+          path: ${{ runner.temp }}/Telegram-unsigned.ipa
           retention-days: 7
 
