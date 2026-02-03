@@ -55,7 +55,7 @@ jobs:
             --disableProvisioningProfiles \
             --buildNumber="$BUILD_NUMBER"
 
-      - name: Build archive without code signing
+      - name: Build without code signing (scheme has no Archive action)
         run: |
           set -e
           SOURCE_DIR=/Users/Shared/telegram-ios
@@ -66,15 +66,15 @@ jobs:
             -sdk iphoneos \
             -configuration Release \
             -destination "generic/platform=iOS" \
-            -archivePath "$RUNNER_TEMP/Telegram.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
-            clean archive
+            clean build
 
       - name: Create unsigned IPA
         run: |
           set -e
-          ARCHIVE_APPS_DIR="$RUNNER_TEMP/Telegram.xcarchive/Products/Applications"
+          ARCHIVE_APPS_DIR="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos"
           echo "Contents of $ARCHIVE_APPS_DIR:"
           ls -la "$ARCHIVE_APPS_DIR"
 
