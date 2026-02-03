@@ -1768,9 +1768,11 @@ xcodeproj(
     xcode_configurations = {
         "Debug": {
             "//command_line_option:compilation_mode": "dbg",
+            "//Telegram:disableProvisioningProfiles": True,
         },
         "Release": {
             "//command_line_option:compilation_mode": "opt",
+            "//Telegram:disableProvisioningProfiles": True,
         },
     },
     default_xcode_configuration = "Debug"
