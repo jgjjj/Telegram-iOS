@@ -70,9 +70,12 @@ genrule(
 
     cp -R "$$SOURCE_PATH" "$$BUILD_DIR/"
 
-    pushd "$$BUILD_DIR/libvpx"
-    patch -p1 < ../0001-Support-arm64-simulator.patch
-    popd
+    # Этот патч нужен только для сборки под arm64 simulator.
+    if [ "$$BUILD_ARCH" = "sim_arm64" ]; then
+        pushd "$$BUILD_DIR/libvpx"
+        patch -p1 < ../0001-Support-arm64-simulator.patch
+        popd
+    fi
 
     mkdir -p "$$BUILD_DIR/Public/libvpx"
 
